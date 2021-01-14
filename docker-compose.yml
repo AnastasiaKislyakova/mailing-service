@@ -1,0 +1,70 @@
+version: '3'
+services:
+  eureka-server:
+    image: 'eureka-service-discovery:0.0.1-SNAPSHOT'
+    ports:
+      - "8761:8761"
+    build:
+      context: ../eureka-service-discovery/build/docker
+      dockerfile: Dockerfile
+  db:
+    image: 'postgres:latest'
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=mysecretpassword
+      - POSTGRES_DB=scheduler
+  app2:
+    image: 'channel-service:0.0.1-SNAPSHOT'
+    ports:
+      - "8094:8094"
+    build:
+      context: ../channel-service/service/build/docker
+      dockerfile: Dockerfile
+    depends_on:
+      - db
+      - eureka-server
+    links:
+      - eureka-server
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/scheduler?stringtype=unspecified
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=mysecretpassword
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka
+  app3:
+    image: 'email-service:0.0.1-SNAPSHOT'
+    ports:
+      - "8095:8095"
+    build:
+      context: ../email-service/service/build/docker
+      dockerfile: Dockerfile
+    depends_on:
+      - db
+      - eureka-server
+    links:
+      - eureka-server
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/scheduler?stringtype=unspecified
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=mysecretpassword
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka
+  app1:
+    image: 'mailing-service:0.0.1-SNAPSHOT'
+    ports:
+      - "8096:8096"
+    build:
+      context: ./build/docker
+      dockerfile: Dockerfile
+    depends_on:
+      - db
+      - eureka-server
+      - app2
+      - app3
+    links:
+      - eureka-server
+      - app2
+      - app3
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/scheduler?stringtype=unspecified
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=mysecretpassword
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka
